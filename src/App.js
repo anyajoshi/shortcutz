@@ -69,6 +69,39 @@ const getExplanation = (question, answer) => {
   };
 };
 
+// AI feedback using Gemini API
+const getAIFeedback = async (question, isCorrect) => {
+  const apiUrl =
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyBLshtfE2XUAX2O6L23MigyaPt2mTua7j0";
+
+  const prompt = isCorrect
+    ? `The student answered correctly. Offer positive reinforcement and a quick follow-up tip for this math question: ${question}`
+    : `The student answered incorrectly. Give a helpful, step-by-step explanation for how to solve this math question: ${question}`;
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data && data.candidates && data.candidates.length > 0) {
+      return data.candidates[0].content.parts[0].text;
+    }
+
+    return "No feedback was returned.";
+  } catch (error) {
+    console.error("Error fetching AI feedback:", error);
+    return "Sorry, we couldn't retrieve AI feedback at this time.";
+  }
+};
+
 function calculateNextLevel(history) {
   const recent = history.slice(-5);
   const correctRatio = recent.filter((h) => h.correct).length / recent.length;
@@ -83,15 +116,6 @@ function calculateNextLevel(history) {
   }
 }
 
-// Simple AI Feedback function
-const getAIFeedback = (question, isCorrect) => {
-  if (isCorrect) {
-    return "Great job! You're on the right track!";
-  } else {
-    return "Oops! Try again. Remember to double-check your math!";
-  }
-};
-
 export default function AdaptiveMathApp() {
   const [level, setLevel] = useState(1);
   const [questionObj, setQuestionObj] = useState({});
@@ -104,7 +128,6 @@ export default function AdaptiveMathApp() {
     multiplication: false,
     division: false,
   });
-  const [currentPage, setCurrentPage] = useState("home"); // Track current page (home or practice)
   const [isStarted, setIsStarted] = useState(false); // To track if the user has selected topics
 
   const containerRef = useRef(null);
@@ -155,7 +178,6 @@ export default function AdaptiveMathApp() {
 
   const handleStart = () => {
     if (Object.values(topics).includes(true)) {
-      setCurrentPage("practice"); // Navigate to practice page
       setIsStarted(true); // Start the question flow if at least one topic is selected
       setQuestionObj(generateQuestion(level, Object.keys(topics).filter((topic) => topics[topic]))); // Generate first question based on selected topics
     } else {
@@ -163,20 +185,7 @@ export default function AdaptiveMathApp() {
     }
   };
 
-  const handleBackToHome = () => {
-    setCurrentPage("home"); // Navigate back to the home page
-    setTopics({
-      addition: false,
-      subtraction: false,
-      multiplication: false,
-      division: false,
-    });
-    setIsStarted(false);
-    setHistory([]);
-    setUserAnswer("");
-  };
-
-  if (currentPage === "home") {
+  if (!isStarted) {
     // Display topic selection screen
     return (
       <div style={{ textAlign: "center", padding: "50px", fontFamily: "sans-serif" }}>
@@ -341,22 +350,6 @@ export default function AdaptiveMathApp() {
             Submit
           </button>
         </div>
-
-        <button
-          onClick={handleBackToHome}
-          style={{
-            padding: "0.6rem 1.2rem",
-            background: "#ccc",
-            color: "#000",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-            width: "100%",
-            marginTop: "20px",
-          }}
-        >
-          Back to Home
-        </button>
       </div>
     </div>
   );
