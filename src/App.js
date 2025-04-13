@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 // Utility functions
 const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-// Question generation logic based on selected topic(s)
+// Question generation logic based on selected topics
 const generateQuestion = (level, topics) => {
   const range = level * 5;
   const a = getRandomInt(-range, range); // Allow negative values for all operations
